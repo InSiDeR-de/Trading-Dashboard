@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Trading Live Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0a0a0b; color: #e5e7eb; font-family: 'Inter', sans-serif; }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0a0b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        * { scrollbar-width: thin; scrollbar-color: #27272a #0a0a0b; }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+    <div class="max-w-6xl mx-auto">
+        
+        <div class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+            <h1 class="text-xl font-bold text-gray-400 tracking-widest uppercase">Live Equity Monitor</h1>
+            
+            <div class="flex items-center gap-6">
+                <button onclick="openStatsModal()" class="px-4 py-2 bg-indigo-900/20 border border-indigo-900/50 text-indigo-400 font-bold text-xs uppercase tracking-widest rounded hover:bg-indigo-900/40 transition-colors">
+                    Setup Stats
+                </button>
+                
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-semibold text-gray-500">Account</span>
+                    <div class="relative">
+                        <select id="accountSelect" onchange="switchAccount()" class="appearance-none bg-[#141416] border border-gray-800 text-white text-sm font-bold py-2 pl-4 pr-10 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer hover:bg-gray-900 transition-colors">
+                            <option value="acc1">LFE0506411500002</option>
+                            <option value="acc2">LFE0506411500003</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+                </div>
+                <div id="statusTag" class="px-4 py-1.5 rounded border font-bold text-sm text-gray-400 border-gray-600 animate-pulse">ŁADOWANIE...</div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-10">
+            <div class="bg-[#141416] p-4 lg:p-6 rounded-xl border border-gray-800 shadow-2xl flex flex-col items-center justify-center text-center">
+                <p class="text-[10px] lg:text-xs text-gray-500 uppercase font-semibold">Account Balance</p>
+                <p id="currBal" class="text-xl lg:text-3xl font-bold text-emerald-400 mt-2">$0.00</p>
+            </div>
+            <div class="bg-[#141416] p-4 lg:p-6 rounded-xl border border-gray-800 shadow-2xl flex flex-col items-center justify-center text-center">
+                <p class="text-[10px] lg:text-xs text-gray-500 uppercase font-semibold">Trailing Minimum</p>
+                <p id="minBal" class="text-xl lg:text-3xl font-bold text-red-500 mt-2">$0.00</p>
+            </div>
+            <div class="bg-[#141416] p-4 lg:p-6 rounded-xl border border-gray-800 shadow-2xl flex flex-col items-center justify-center text-center">
+                <p class="text-[10px] lg:text-xs text-gray-500 uppercase font-semibold">Distance to Breach</p>
+                <p id="distance" class="text-xl lg:text-3xl font-bold text-white mt-2">$0.00</p>
+            </div>
+            <div class="bg-[#141416] p-4 lg:p-6 rounded-xl border border-gray-800 shadow-2xl flex flex-col items-center justify-center text-center">
+                <p class="text-[10px] lg:text-xs text-gray-500 uppercase font-semibold">Total P&L</p>
+                <p id="totalPnl" class="text-xl lg:text-3xl font-bold mt-2 text-gray-400">$0.00</p>
+            </div>
+            <div class="bg-[#141416] p-4 lg:p-6 rounded-xl border border-gray-800 shadow-2xl flex flex-col items-center justify-center text-center">
+                <p class="text-[10px] lg:text-xs text-gray-500 uppercase font-semibold">Trading Days</p>
+                <p id="tradingDays" class="text-xl lg:text-3xl font-bold text-white mt-2">0</p>
+            </div>
+            <div class="bg-[#141416] p-4 lg:p-6 rounded-xl border border-gray-800 shadow-2xl flex flex-col items-center justify-center text-center">
+                <p class="text-[10px] lg:text-xs text-gray-500 uppercase font-semibold">Consistency</p>
+                <p id="consistency" class="text-xl lg:text-3xl font-bold text-white mt-2">0.00%</p>
+            </div>
+        </div>
+
+        <div class="bg-[#141416] p-6 rounded-2xl border border-gray-800 shadow-inner mb-10">
+            <canvas id="liveChart" height="120"></canvas>
+        </div>
+
+        <div class="bg-[#141416] p-6 lg:p-8 rounded-2xl border border-gray-800 shadow-2xl">
+            <div class="mb-6 flex justify-between items-center border-b border-gray-800 pb-4">
+                <h2 class="text-xl font-black uppercase tracking-tighter italic text-gray-500">Trading Calendar</h2>
+                <div class="flex items-center gap-2">
+                    <button onclick="changeMonth(-1)" class="px-4 py-1.5 bg-[#0a0a0b] border border-gray-800 rounded-md hover:bg-gray-800 text-gray-400 transition-colors">&larr;</button>
+                    <p id="calendarMonth" class="font-bold text-base text-white font-mono uppercase w-36 text-center"></p>
+                    <button onclick="changeMonth(1)" class="px-4 py-1.5 bg-[#0a0a0b] border border-gray-800 rounded-md hover:bg-gray-800 text-gray-400 transition-colors">&rarr;</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-7 gap-2 mb-2 px-2">
+                <div class="text-center text-[10px] font-bold text-gray-600 uppercase">Sun</div>
+                <div class="text-center text-[10px] font-bold text-gray-600 uppercase">Mon</div>
+                <div class="text-center text-[10px] font-bold text-gray-600 uppercase">Tue</div>
+                <div class="text-center text-[10px] font-bold text-gray-600 uppercase">Wed</div>
+                <div class="text-center text-[10px] font-bold text-gray-600 uppercase">Thu</div>
+                <div class="text-center text-[10px] font-bold text-gray-600 uppercase">Fri</div>
+                <div class="text-center text-[10px] font-bold text-gray-600 uppercase">Sat</div>
+            </div>
+            <div id="calendarContainer" class="grid grid-cols-7 gap-2"></div>
+        </div>
+        
+    </div>
+    
+    <div id="journalModal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-40 p-4 transition-opacity duration-300 opacity-0" onclick="closeModal(event)">
+        <div class="bg-[#141416] border border-gray-800 rounded-2xl w-[90vw] max-w-[90vw] max-h-[90vh] overflow-y-auto flex flex-col shadow-2xl relative" onclick="event.stopPropagation()">
+            
+            <div class="flex justify-between items-center px-6 py-4 border-b border-gray-800 sticky top-0 bg-[#141416] z-10">
+                <div>
+                    <h2 class="text-xl font-black text-white uppercase italic" id="modalTitle">Journal: 2026-03-02</h2>
+                    <p class="text-xs text-gray-500 font-mono mt-0.5" id="modalSummary">PNL: -$1296.40 | Trades: 2</p>
+                </div>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white transition-colors p-1 text-2xl font-bold">&times;</button>
+            </div>
+
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="flex flex-col gap-5">
+                    
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                        <h3 class="text-sm font-bold text-emerald-500 uppercase tracking-widest">Log New Trade</h3>
+                        <button id="saveBtn" onclick="saveTrade()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase tracking-widest text-[10px] px-4 py-2 rounded-md transition-colors">
+                            Add Trade
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] text-gray-500 font-bold uppercase">Asset / Symbol</label>
+                            <input type="text" id="tradeAsset" placeholder="e.g. NQ, EURUSD" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none mt-1">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-gray-500 font-bold uppercase">Net P&L ($)</label>
+                            <input type="number" id="tradePnl" step="0.01" placeholder="-50.00" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none mt-1">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] text-gray-500 font-bold uppercase">Setup Type</label>
+                            <select id="tradeSetup" onchange="toggleCustomSetupInput('tradeSetup', 'customSetupInput')" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none mt-1 appearance-none cursor-pointer">
+                                </select>
+                            <input type="text" id="customSetupInput" placeholder="Napisz nowy setup..." class="hidden w-full bg-[#141416] border border-indigo-500 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none mt-2">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-gray-500 font-bold uppercase">R:R Ratio (opcjonalnie)</label>
+                            <input type="number" id="tradeRR" step="0.1" placeholder="e.g. 2.5" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none mt-1">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] text-gray-500 font-bold uppercase">Notes / Setup Rules</label>
+                        <textarea id="tradeNotes" rows="6" placeholder="Why did you take this trade? What was the setup?" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none mt-1 resize-none"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="text-[10px] text-gray-500 font-bold uppercase">Images (Max 4)</label>
+                        <div id="newImagesContainer" class="grid grid-cols-4 gap-3 mt-1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-5">
+                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest border-b border-gray-800 pb-2">Day's Execution Log</h3>
+                    <div id="tradesList" class="flex flex-col overflow-y-auto max-h-[700px] pr-2">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-50 p-4 transition-opacity duration-200 opacity-0" onclick="closeEditModal(event)">
+        <div class="bg-[#141416] border border-gray-800 rounded-xl w-[90vw] max-w-[90vw] max-h-[90vh] overflow-y-auto flex flex-col shadow-2xl p-6" onclick="event.stopPropagation()">
+            
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-5">
+                <h3 class="text-xl font-bold text-yellow-500 uppercase tracking-widest">Edit Trade</h3>
+                <div class="flex gap-3">
+                    <button onclick="closeEditModal()" class="bg-[#0a0a0b] hover:bg-gray-900 border border-gray-800 text-gray-400 font-bold uppercase tracking-widest text-[10px] px-5 py-2 rounded-md transition-colors">Cancel</button>
+                    <button id="updateBtn" onclick="submitEditTrade()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold uppercase tracking-widest text-[10px] px-6 py-2 rounded-md transition-colors">Update Trade</button>
+                </div>
+            </div>
+            
+            <input type="hidden" id="editTradeId">
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="text-[10px] text-gray-500 font-bold uppercase">Asset</label>
+                    <input type="text" id="editTradeAsset" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-yellow-500 outline-none mt-1">
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-500 font-bold uppercase">Net P&L ($)</label>
+                    <input type="number" id="editTradePnl" step="0.01" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-yellow-500 outline-none mt-1">
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <div>
+                    <label class="text-[10px] text-gray-500 font-bold uppercase">Setup Type</label>
+                    <select id="editTradeSetup" onchange="toggleCustomSetupInput('editTradeSetup', 'editCustomSetupInput')" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-yellow-500 outline-none mt-1 appearance-none cursor-pointer">
+                        </select>
+                    <input type="text" id="editCustomSetupInput" placeholder="Napisz nowy setup..." class="hidden w-full bg-[#141416] border border-indigo-500 rounded p-2 text-white text-sm focus:border-yellow-500 outline-none mt-2">
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-500 font-bold uppercase">R:R Ratio</label>
+                    <input type="number" id="editTradeRR" step="0.1" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-yellow-500 outline-none mt-1">
+                </div>
+            </div>
+
+            <div class="mb-5 flex-grow flex flex-col">
+                <label class="text-[10px] text-gray-500 font-bold uppercase">Notes / Setup Rules</label>
+                <textarea id="editTradeNotes" rows="10" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-yellow-500 outline-none mt-1 resize-none"></textarea>
+            </div>
+            
+            <div class="mb-2">
+                <label class="text-[10px] text-gray-500 font-bold uppercase">Images (Max 4)</label>
+                <div id="editImagesContainer" class="grid grid-cols-4 gap-3 mt-1">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="statsModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-50 p-4 transition-opacity duration-200 opacity-0" onclick="closeStatsModal(event)">
+        <div class="bg-[#141416] border border-gray-800 rounded-xl w-[700px] max-w-[90vw] max-h-[90vh] overflow-y-auto shadow-2xl relative" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center px-6 py-4 border-b border-gray-800 sticky top-0 bg-[#141416]">
+                <h2 class="text-xl font-black text-indigo-400 uppercase tracking-widest">Model Statistics</h2>
+                <button onclick="closeStatsModal()" class="text-gray-400 hover:text-white transition-colors p-1 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="p-6">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="border-b border-gray-800 pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Setup</th>
+                            <th class="border-b border-gray-800 pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Trades</th>
+                            <th class="border-b border-gray-800 pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Win Rate</th>
+                            <th class="border-b border-gray-800 pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Avg R:R</th>
+                            <th class="border-b border-gray-800 pb-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Net P&L</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="imageViewerModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[60] p-4 transition-opacity duration-200 opacity-0" onclick="closeImageModal()">
+        <button onclick="closeImageModal()" class="absolute top-4 right-6 text-gray-400 hover:text-white transition-colors p-2 text-4xl font-bold z-10">&times;</button>
+        <img id="imageViewerSrc" src="" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onclick="event.stopPropagation()">
+    </div>
+    
+    <script>
+        // =========================================================================
+        // KONFIGURACJA KONT (Na stałe wpisane zgodnie z prośbą)
+        // =========================================================================
+        const accountsConfig = {
+            "acc1": {
+                csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRLxXdDd318ebPHocMBKad_i98usJ69363UmSKmbPnYEvRtu35VlFpOcaIR-2L1Rj7t4KvCDrVDUw6V/pub?output=csv',
+                api: 'https://script.google.com/macros/s/AKfycbyG2ZlvWRmbNp4syRi4YKL0efVpbJRFtO0MDtY5NQqaV9hJ0JssTtUw6GAr3_jqNVqw/exec'
+            },
+            "acc2": {
+                csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCXM5eV5znhz5h8D1QqvV-DgXkg6bYyb6Nt_50ba_ecMbPKhq08eYV6U-9NnGkO0eFsXxIzlGY_B2W/pub?output=csv',
+                api: 'https://script.google.com/macros/s/AKfycbyG7hZcFdlEys0-ra6n96bVO_5fZRZGWVzr0waWKoKggfkszfximVOGIwR1LmehGVJx/exec'
+            }
+        };
+
+        let savedAccount = localStorage.getItem('selectedAccount');
+        let currentAccountId = (savedAccount && accountsConfig[savedAccount]) ? savedAccount : 'acc1';
+        
+        let csvUrl = accountsConfig[currentAccountId].csv;
+        let webAppUrl = accountsConfig[currentAccountId].api;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('accountSelect').value = currentAccountId;
+        });
+
+        const fallbackImg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Crect width='100%25' height='100%25' fill='%230a0a0b'/%3E%3Ctext x='50%25' y='50%25' fill='%233f3f46' font-family='sans-serif' font-size='14' font-weight='bold' text-anchor='middle' dominant-baseline='middle'%3EBLAD ZDJECIA%3C/text%3E%3C/svg%3E";
+
+        let globalCalendarData = {};
+        let currentDispYear = null;
+        let currentDispMonth = null;
+        
+        let journalData = {}; 
+        let activeJournalDate = null;
+        let currentChart = null;
+        let journalDataLoaded = false;
+
+        let editImgs = ['', '', '', ''];
+        let editImgStates = ['view', 'view', 'view', 'view'];
+
+        let newImgs = ['', '', '', ''];
+        let newImgStates = ['view', 'view', 'view', 'view'];
+
+        function switchAccount() {
+            currentAccountId = document.getElementById('accountSelect').value;
+            localStorage.setItem('selectedAccount', currentAccountId); 
+            
+            csvUrl = accountsConfig[currentAccountId].csv;
+            webAppUrl = accountsConfig[currentAccountId].api;
+
+            globalCalendarData = {};
+            journalData = {};
+            journalDataLoaded = false;
+            
+            const tag = document.getElementById('statusTag');
+            tag.innerText = 'ŁADOWANIE...';
+            tag.className = 'px-4 py-1.5 rounded border font-bold text-sm text-gray-400 border-gray-600 animate-pulse';
+
+            if(currentChart) {
+                currentChart.destroy();
+                currentChart = null;
+            }
+
+            fetchData();
+        }
+
+        async function fetchData() {
+            if(!csvUrl.startsWith("http")) {
+                document.getElementById('statusTag').innerText = 'SKONFIGURUJ LINK CSV W KODZIE';
+                return;
+            }
+
+            try {
+                const response = await fetch(csvUrl + '&t=' + Date.now());
+                const data = await response.text();
+                const rows = data.split('\n').map(r => r.trim()).filter(r => r.length > 0).slice(1);
+                
+                const labels = [], balances = [], minimums = [];
+                const calendarData = {}; 
+                let totalPnl = 0, tradingDays = 0, maxDayPnl = -Infinity;
+
+                rows.forEach(row => {
+                    const cols = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || row.split(',');
+                    if (cols.length >= 4) {
+                        const dateStr = cols[0].replace(/"/g, '').trim();
+                        const cleanNum = (val) => {
+                            let c = val.replace(/"/g, '').replace(/\s/g, '').replace(',', '.');
+                            if ((c.match(/\./g) || []).length > 1) { c = c.replace('.', ''); }
+                            return parseFloat(c) || 0;
+                        };
+
+                        const balVal = cleanNum(cols[2]);
+                        const minVal = cleanNum(cols[3]);
+                        const tradesStr = cols[4] ? cols[4].replace(/"/g, '').trim() : "0";
+                        const tradesNum = parseInt(tradesStr) || 0;
+                        const pnlVal = cols[1] ? cleanNum(cols[1]) : 0;
+                        const winRateStr = cols[5] ? cols[5].replace(/"/g, '').trim() : "0%";
+
+                        calendarData[dateStr] = { pnl: pnlVal, trades: tradesStr, winRate: winRateStr };
+                        
+                        if (tradesNum > 0) {
+                            totalPnl += pnlVal;
+                            tradingDays++;
+                            if (pnlVal > maxDayPnl) maxDayPnl = pnlVal;
+                        }
+
+                        if (tradesNum > 0 || labels.length === 0) {
+                            labels.push(dateStr);
+                            balances.push(balVal);
+                            minimums.push(minVal);
+                        }
+                    }
+                });
+
+                globalCalendarData = calendarData; 
+                updateUI(labels, balances, minimums, totalPnl, tradingDays, maxDayPnl);
+                generateCalendar(calendarData); 
+                fetchJournalDatabase();
+
+            } catch (error) {
+                document.getElementById('statusTag').innerText = 'BŁĄD DANYCH: ' + error.message;
+            }
+        }
+
+        async function fetchJournalDatabase() {
+            if(!webAppUrl.startsWith("http")) return;
+            try {
+                const res = await fetch(webAppUrl + "?t=" + Date.now());
+                const raw = await res.json();
+                journalData = {}; 
+                raw.forEach(trade => {
+                    const cleanDate = trade.date.substring(0, 10);
+                    if(!journalData[cleanDate]) journalData[cleanDate] = [];
+                    journalData[cleanDate].push(trade);
+                });
+                
+                Object.keys(journalData).forEach(date => {
+                    let dailyPnl = 0;
+                    let dailyTrades = journalData[date].length;
+                    let winningTrades = 0;
+                    
+                    journalData[date].forEach(t => {
+                        dailyPnl += t.pnl;
+                        if(t.pnl > 0) winningTrades++;
+                    });
+                    
+                    let winRate = dailyTrades > 0 ? Math.round((winningTrades / dailyTrades) * 100) + "%" : "0%";
+                    
+                    globalCalendarData[date] = { 
+                        pnl: dailyPnl, 
+                        trades: dailyTrades.toString(), 
+                        winRate: winRate 
+                    };
+                });
+
+                Object.keys(globalCalendarData).forEach(date => {
+                    if(!journalData[date] && globalCalendarData[date]) {
+                        globalCalendarData[date].trades = "0";
+                        globalCalendarData[date].pnl = 0;
+                    }
+                });
+
+                generateCalendar(globalCalendarData);
+
+                journalDataLoaded = true;
+                if (activeJournalDate) renderTradeList();
+                
+            } catch(e) {
+                console.error("Błąd API", e);
+                journalDataLoaded = true;
+                if (activeJournalDate) renderTradeList();
+            }
+        }
+
+        function updateUI(labels, balances, minimums, totalPnl, tradingDays, maxDayPnl) {
+            if(balances.length === 0) return;
+            const lastBal = balances[balances.length - 1];
+            const lastMin = minimums[minimums.length - 1];
+            const dist = lastBal - lastMin;
+
+            document.getElementById('currBal').innerText = '$' + lastBal.toLocaleString();
+            document.getElementById('minBal').innerText = '$' + lastMin.toLocaleString();
+            document.getElementById('distance').innerText = '$' + dist.toLocaleString();
+
+            const tag = document.getElementById('statusTag');
+            if (dist <= 0) {
+                tag.innerText = 'ACCOUNT BREACHED';
+                tag.className = 'px-4 py-1.5 rounded border border-red-500 bg-red-900/20 text-red-500 font-bold';
+            } else {
+                tag.innerText = 'ACCOUNT ACTIVE';
+                tag.className = 'px-4 py-1.5 rounded border border-emerald-500 bg-emerald-900/20 text-emerald-500 font-bold';
+            }
+            
+            const pnlElement = document.getElementById('totalPnl');
+            pnlElement.innerText = (totalPnl >= 0 ? '$' : '-$') + Math.abs(totalPnl).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+            pnlElement.className = `text-xl lg:text-3xl font-bold mt-2 ${totalPnl >= 0 ? 'text-emerald-400' : 'text-red-500'}`;
+            
+            document.getElementById('tradingDays').innerText = tradingDays;
+            let consistencyStr = "0.00%";
+            if (tradingDays > 0 && totalPnl !== 0 && maxDayPnl !== -Infinity) {
+                let consistencyPct = (maxDayPnl / totalPnl) * 100;
+                consistencyStr = consistencyPct.toFixed(2) + "%";
+            }
+            document.getElementById('consistency').innerText = consistencyStr;
+
+            renderChart(labels, balances, minimums);
+        }
+
+        function renderChart(labels, balances, minimums) {
+            if (currentChart) currentChart.destroy();
+            
+            const canvas = document.getElementById('liveChart');
+            const ctx = canvas.getContext('2d');
+            
+            let gradientGreen = ctx.createLinearGradient(0, 0, 0, canvas.clientHeight || 300);
+            gradientGreen.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
+            gradientGreen.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+            let gradientRed = ctx.createLinearGradient(0, 0, 0, canvas.clientHeight || 300);
+            gradientRed.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
+            gradientRed.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
+
+            Chart.defaults.elements.point.radius = 0; 
+            Chart.defaults.elements.point.hoverRadius = 6; 
+            Chart.defaults.elements.point.borderWidth = 2; 
+
+            const tickStep = Math.max(1, Math.ceil(labels.length / 10));
+
+            currentChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Account Balance', 
+                        data: balances, 
+                        borderColor: '#00C28A', 
+                        backgroundColor: function(context) {
+                            const chart = context.chart;
+                            const {ctx, chartArea} = chart;
+                            if (!chartArea) return null;
+                            let gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                            gradient.addColorStop(0, 'rgba(0, 194, 138, 0.25)'); 
+                            gradient.addColorStop(1, 'rgba(0, 194, 138, 0.0)');
+                            return gradient;
+                        },
+                        fill: true,
+                        tension: 0.4, 
+                        borderWidth: 3, 
+                        pointHoverBackgroundColor: '#141416', 
+                        pointHoverBorderColor: '#00C28A', 
+                        order: 2
+                    }, {
+                        label: 'Minimum Balance', 
+                        data: minimums, 
+                        borderColor: '#FF4D4D', 
+                        backgroundColor: function(context) {
+                            const chart = context.chart;
+                            const {ctx, chartArea} = chart;
+                            if (!chartArea) return null;
+                            let gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                            gradient.addColorStop(0, 'rgba(255, 77, 77, 0.20)'); 
+                            gradient.addColorStop(1, 'rgba(255, 77, 77, 0.0)');  
+                            return gradient;
+                        },
+                        fill: true, 
+                        borderDash: [6, 4], 
+                        stepped: true, 
+                        borderWidth: 2, 
+                        pointHoverBackgroundColor: '#141416',
+                        pointHoverBorderColor: '#FF4D4D',
+                        order: 1 
+                    }]
+                },
+                options: {
+                    responsive: true, 
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { 
+                            display: true, 
+                            position: 'top',
+                            align: 'end', 
+                            labels: {
+                                color: '#9ca3af', 
+                                usePointStyle: true, 
+                                pointStyle: 'circle',
+                                boxWidth: 8, 
+                                boxHeight: 8,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#18181b', 
+                            titleColor: '#ffffff', 
+                            titleFont: { size: 14, family: 'sans-serif', weight: 'bold' }, 
+                            bodyColor: '#e5e7eb', 
+                            bodyFont: { size: 13, family: 'sans-serif' }, 
+                            borderColor: '#27272a', 
+                            borderWidth: 1, 
+                            padding: 12, 
+                            boxPadding: 6, 
+                            bodySpacing: 6, 
+                            titleMarginBottom: 10, 
+                            usePointStyle: true, 
+                            callbacks: {
+                                title: function(context) {
+                                    let d = new Date(context[0].label);
+                                    if (!isNaN(d.getTime())) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                    return context[0].label;
+                                },
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed.y !== null) label += '$' + context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0}).replace(/,/g, ' ');
+                                    return label;
+                                },
+                                labelColor: function(context) {
+                                    return {
+                                        borderColor: context.dataset.borderColor,
+                                        backgroundColor: context.dataset.borderColor, 
+                                        borderWidth: 0,
+                                    };
+                                }
+                            }
+                        }
+                    },
+                    scales: { 
+                        y: { 
+                            grid: { color: '#27272a', drawBorder: false }, 
+                            ticks: { 
+                                color: '#71717a',
+                                callback: function(value) { return value.toLocaleString('en-US'); }
+                            },
+                            border: { display: false }
+                        }, 
+                        x: { 
+                            grid: { display: false, drawBorder: false }, 
+                            ticks: { 
+                                color: '#71717a',
+                                maxRotation: 0,
+                                maxTicksLimit: 8, 
+                                callback: function(val, index) {
+                                    let label = labels[index];
+                                    if (!label) return '';
+                                    let d = new Date(label);
+                                    if (!isNaN(d.getTime())) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                    return label;
+                                }
+                            },
+                            border: { display: false }
+                        } 
+                    }
+                }
+            });
+        }
+
+        function changeMonth(offset) {
+            if (currentDispYear === null || currentDispMonth === null) return;
+            currentDispMonth += offset;
+            if (currentDispMonth < 0) { currentDispMonth = 11; currentDispYear--; } 
+            else if (currentDispMonth > 11) { currentDispMonth = 0; currentDispYear++; }
+            generateCalendar(globalCalendarData);
+        }
+
+        function generateCalendar(data) {
+            const container = document.getElementById('calendarContainer');
+            container.innerHTML = '';
+            
+            if (currentDispYear === null || currentDispMonth === null) {
+                const now = new Date();
+                currentDispYear = now.getFullYear();
+                currentDispMonth = now.getMonth();
+            }
+            
+            let year = currentDispYear;
+            let month = currentDispMonth;
+
+            document.getElementById('calendarMonth').innerText = new Date(year, month).toLocaleString('pl-PL', { month: 'long', year: 'numeric' });
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) container.innerHTML += `<div class="bg-transparent h-24"></div>`;
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                let dayData = null;
+                const targetDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const possibleKeys = [targetDate, `${String(day).padStart(2, '0')}.${String(month + 1).padStart(2, '0')}.${year}`, `${String(month + 1).padStart(2, '0')}/${String(day).padStart(2, '0')}/${year}`, `${year}/${String(month + 1).padStart(2, '0')}/${String(day).padStart(2, '0')}`];
+                
+                for(let k of possibleKeys) { if(data[k]) { dayData = data[k]; break; } }
+
+                const isWeekend = (new Date(year, month, day).getDay() === 0 || new Date(year, month, day).getDay() === 6);
+                if (isWeekend) {
+                    container.innerHTML += `<div class="bg-[#0a0a0b] border border-gray-900/50 rounded-lg h-24 p-2 flex flex-col justify-start opacity-30"><div class="text-[10px] font-bold text-gray-700">${day}</div></div>`;
+                    continue;
+                }
+
+                const hasTrades = dayData && parseInt(dayData.trades) > 0;
+                const bgColor = hasTrades ? (dayData.pnl >= 0 ? 'bg-emerald-500/10 border border-emerald-500/50' : 'bg-red-500/10 border border-red-500/50') : 'bg-[#141416] border border-gray-800';
+                const textColor = hasTrades ? (dayData.pnl >= 0 ? 'text-emerald-400' : 'text-red-500') : 'text-gray-400';
+
+                container.innerHTML += `
+                    <div onclick="openJournal('${targetDate}')" class="${bgColor} rounded-lg h-24 p-2 flex flex-col justify-between transition-all hover:scale-[1.02] cursor-pointer hover:border-white">
+                        <div class="text-[15px] font-bold text-gray-500">${day}</div>
+                        ${hasTrades ? `
+                            <div class="text-center mb-1">
+                                <div class="text-[17px] font-black ${textColor}">${dayData.pnl > 0 ? '+' : ''}${dayData.pnl.toFixed(2)}$</div>
+                                <div class="flex justify-between mt-2 px-1"><span class="text-[12px] text-gray-500 font-bold">${dayData.trades}T</span><span class="text-[12px] text-gray-400 font-mono">${dayData.winRate}</span></div>
+                            </div>
+                        ` : '<div class="h-4"></div>'}
+                    </div>`;
+            }
+        }
+
+        // --- PRAWIDŁOWA FUNKCJA DO POKAZYWANIA INPUTA "OTHER" ---
+        function toggleCustomSetupInput(selectId, inputId) {
+            const select = document.getElementById(selectId);
+            const customInput = document.getElementById(inputId);
+            if (select.value === 'OTHER') {
+                customInput.classList.remove('hidden');
+                customInput.focus();
+            } else {
+                customInput.classList.add('hidden');
+            }
+        }
+
+        function populateSetupDropdowns() {
+            let uniqueSetups = new Set(['None', 'MSS+FVG', 'LQ+MSS+FVG', 'BOS+IFVG','IFVG', 'FVG', 'Gambling', 'Undisciplined']);
+            
+            Object.values(journalData).forEach(dayTrades => {
+                dayTrades.forEach(t => {
+                    if(t.setup && t.setup !== 'None' && t.setup !== 'OTHER') {
+                        uniqueSetups.add(t.setup);
+                    }
+                });
+            });
+
+            const setupList = Array.from(uniqueSetups);
+            setupList.push("OTHER (Wpisz własny)"); 
+            
+            let optionsHtml = '';
+            setupList.forEach(s => {
+                let val = s === "None / Other" ? "None" : (s === "OTHER (Wpisz własny)" ? "OTHER" : s);
+                optionsHtml += `<option value="${val}">${s}</option>`;
+            });
+
+            if(document.getElementById('tradeSetup')) document.getElementById('tradeSetup').innerHTML = optionsHtml;
+            if(document.getElementById('editTradeSetup')) document.getElementById('editTradeSetup').innerHTML = optionsHtml;
+        }
+
+        function openStatsModal() {
+            const tbody = document.getElementById('statsTableBody');
+            tbody.innerHTML = '';
+            
+            if(!journalDataLoaded) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Pobieranie danych...</td></tr>';
+                return;
+            }
+
+            const stats = {};
+            
+            Object.values(journalData).forEach(dayTrades => {
+                dayTrades.forEach(t => {
+                    const setup = t.setup || "None";
+                    if(!stats[setup]) {
+                        stats[setup] = { count: 0, wins: 0, pnl: 0, rrSum: 0 };
+                    }
+                    stats[setup].count++;
+                    stats[setup].pnl += t.pnl;
+                    stats[setup].rrSum += (t.rr || 0); 
+                    if(t.pnl > 0) stats[setup].wins++;
+                });
+            });
+
+            const setupKeys = Object.keys(stats);
+            if(setupKeys.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500 italic">Brak danych o modelach zagrań.</td></tr>';
+            } else {
+                setupKeys.sort((a, b) => stats[b].count - stats[a].count).forEach(setup => {
+                    const s = stats[setup];
+                    const winRate = s.count > 0 ? Math.round((s.wins / s.count) * 100) : 0;
+                    const avgRR = s.count > 0 ? (s.rrSum / s.count).toFixed(2) : "0.00";
+                    const colorClass = s.pnl >= 0 ? 'text-emerald-400' : 'text-red-500';
+                    const sign = s.pnl > 0 ? '+' : '';
+                    
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-white/5 transition-colors border-b border-gray-800/50">
+                            <td class="py-3 text-sm font-bold text-white"><span class="px-2 py-1 bg-indigo-900/30 text-indigo-300 rounded text-[11px] uppercase tracking-wider">${setup}</span></td>
+                            <td class="py-3 text-sm text-gray-300 text-center font-mono">${s.count}</td>
+                            <td class="py-3 text-sm text-gray-300 text-center font-mono">${winRate}%</td>
+                            <td class="py-3 text-sm text-gray-400 text-center font-mono">${avgRR}R</td>
+                            <td class="py-3 text-sm font-bold text-right ${colorClass}">${sign}$${s.pnl.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            const modal = document.getElementById('statsModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeStatsModal(event) {
+            if (event && event.target.id !== 'statsModal') return;
+            const modal = document.getElementById('statsModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => { modal.classList.remove('flex'); modal.classList.add('hidden'); }, 200);
+        }
+
+        function openImageModal(url) {
+            const modal = document.getElementById('imageViewerModal');
+            const imgSrc = document.getElementById('imageViewerSrc');
+            imgSrc.src = url;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('imageViewerModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => { 
+                modal.classList.remove('flex'); 
+                modal.classList.add('hidden'); 
+                document.getElementById('imageViewerSrc').src = ''; 
+            }, 200);
+        }
+
+        function renderNewImages() {
+            const container = document.getElementById('newImagesContainer');
+            if(!container) return;
+            let html = '';
+            for(let i=0; i<4; i++) {
+                if(newImgStates[i] === 'edit') {
+                    html += `<input type="text" id="newImgInput${i}" class="w-full h-32 bg-[#0a0a0b] border border-emerald-500 rounded p-4 text-white text-[10px] outline-none" placeholder="Wklej link..." onblur="saveNewImage(${i}, this.value)" onkeydown="if(event.key==='Enter') { event.preventDefault(); saveNewImage(${i}, this.value); }">`;
+                } else {
+                    if(newImgs[i] && newImgs[i].trim() !== '') {
+                        html += `
+                        <div class="relative w-full h-32 group rounded border border-gray-800 overflow-hidden shadow-inner">
+                            <img src="${newImgs[i]}" onerror="this.onerror=null; this.src='${fallbackImg}';" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                <button type="button" onclick="openImageModal('${newImgs[i]}')" class="text-gray-300 hover:text-white focus:outline-none" title="Podgląd">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                </button>
+                                <button type="button" onclick="removeNewImage(${i})" class="text-red-500 hover:text-red-400 focus:outline-none" title="Usuń">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </div>`;
+                    } else {
+                        html += `
+                        <div class="w-full h-32 border border-gray-800 border-dashed rounded flex items-center justify-center cursor-pointer hover:border-emerald-500 transition-colors bg-[#0a0a0b]" onclick="enableNewImageInput(${i})">
+                            <svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </div>`;
+                    }
+                }
+            }
+            container.innerHTML = html;
+        }
+
+        function enableNewImageInput(i) {
+            newImgStates[i] = 'edit';
+            renderNewImages();
+            setTimeout(() => { const input = document.getElementById('newImgInput' + i); if(input) input.focus(); }, 50);
+        }
+
+        function saveNewImage(i, val) {
+            newImgs[i] = val.trim();
+            newImgStates[i] = 'view';
+            renderNewImages();
+        }
+
+        function removeNewImage(i) {
+            newImgs[i] = '';
+            renderNewImages();
+        }
+
+        function renderEditImages() {
+            const container = document.getElementById('editImagesContainer');
+            let html = '';
+            for(let i=0; i<4; i++) {
+                if(editImgStates[i] === 'edit') {
+                    html += `<input type="text" id="editImgInput${i}" class="w-full h-32 bg-[#0a0a0b] border border-yellow-500 rounded p-4 text-white text-[10px] outline-none" placeholder="Wklej link..." onblur="saveEditImage(${i}, this.value)" onkeydown="if(event.key==='Enter') { event.preventDefault(); saveEditImage(${i}, this.value); }">`;
+                } else {
+                    if(editImgs[i] && editImgs[i].trim() !== '') {
+                        html += `
+                        <div class="relative w-full h-32 group rounded border border-gray-800 overflow-hidden shadow-inner">
+                            <img src="${editImgs[i]}" onerror="this.onerror=null; this.src='${fallbackImg}';" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                <button type="button" onclick="openImageModal('${editImgs[i]}')" class="text-gray-300 hover:text-white focus:outline-none" title="Podgląd">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                </button>
+                                <button type="button" onclick="removeEditImage(${i})" class="text-red-500 hover:text-red-400 focus:outline-none" title="Usuń">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </div>`;
+                    } else {
+                        html += `
+                        <div class="w-full h-32 border border-gray-800 border-dashed rounded flex items-center justify-center cursor-pointer hover:border-yellow-500 transition-colors bg-[#0a0a0b]" onclick="enableEditImageInput(${i})">
+                            <svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </div>`;
+                    }
+                }
+            }
+            container.innerHTML = html;
+        }
+
+        function enableEditImageInput(i) {
+            editImgStates[i] = 'edit';
+            renderEditImages();
+            setTimeout(() => { const input = document.getElementById('editImgInput' + i); if(input) input.focus(); }, 50);
+        }
+
+        function saveEditImage(i, val) {
+            editImgs[i] = val.trim();
+            editImgStates[i] = 'view';
+            renderEditImages();
+        }
+
+        function removeEditImage(i) {
+            editImgs[i] = '';
+            renderEditImages();
+        }
+
+        function openJournal(date) {
+            activeJournalDate = date;
+            document.getElementById('modalTitle').innerText = `Journal: ${date}`;
+            const dayStats = globalCalendarData[date];
+            document.getElementById('modalSummary').innerText = dayStats ? `Day Result: $${dayStats.pnl.toFixed(2)} | System Trades: ${dayStats.trades}` : `No aggregated data from Excel for this day.`;
+
+            newImgs = ['', '', '', ''];
+            newImgStates = ['view', 'view', 'view', 'view'];
+            
+            populateSetupDropdowns();
+            
+            if(document.getElementById('tradeSetup')) document.getElementById('tradeSetup').value = "None";
+            if(document.getElementById('customSetupInput')) document.getElementById('customSetupInput').classList.add('hidden');
+            if(document.getElementById('tradeRR')) document.getElementById('tradeRR').value = '';
+            
+            renderNewImages();
+            renderTradeList();
+            
+            const modal = document.getElementById('journalModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeModal(event) {
+            if (event && event.target.id !== 'journalModal') return;
+            const modal = document.getElementById('journalModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => { modal.classList.remove('flex'); modal.classList.add('hidden'); activeJournalDate = null; }, 300);
+        }
+
+        async function saveTrade() {
+            if(!webAppUrl.startsWith("http")) { alert("Skonfiguruj webAppUrl na samej górze skryptu!"); return; }
+
+            const asset = document.getElementById('tradeAsset').value;
+            const pnl = document.getElementById('tradePnl').value;
+            const notes = document.getElementById('tradeNotes').value;
+            let setup = document.getElementById('tradeSetup') ? document.getElementById('tradeSetup').value : "None";
+            
+            if(setup === "OTHER") {
+                setup = document.getElementById('customSetupInput').value.trim() || "None";
+            }
+            
+            let rr = document.getElementById('tradeRR') ? parseFloat(document.getElementById('tradeRR').value) : 0;
+            if(isNaN(rr)) rr = 0;
+
+            if (!asset || !pnl) { alert("Symbol and P&L are required!"); return; }
+
+            const newTrade = { 
+                action: "create", 
+                id: Date.now(), 
+                date: activeJournalDate, 
+                asset: asset.toUpperCase(), 
+                pnl: parseFloat(pnl), 
+                notes: notes, 
+                img1: newImgs[0], 
+                img2: newImgs[1], 
+                img3: newImgs[2], 
+                img4: newImgs[3],
+                setup: setup,
+                rr: rr
+            };
+
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = "SAVING..."; btn.classList.add("opacity-50", "cursor-not-allowed");
+
+            try {
+                await fetch(webAppUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(newTrade) });
+                if (!journalData[activeJournalDate]) journalData[activeJournalDate] = [];
+                journalData[activeJournalDate].push(newTrade);
+                
+                document.getElementById('tradeAsset').value = ''; 
+                document.getElementById('tradePnl').value = '';
+                document.getElementById('tradeNotes').value = ''; 
+                if(document.getElementById('tradeRR')) document.getElementById('tradeRR').value = '';
+                
+                if(document.getElementById('tradeSetup')) document.getElementById('tradeSetup').value = "None";
+                if(document.getElementById('customSetupInput')) {
+                    document.getElementById('customSetupInput').value = '';
+                    document.getElementById('customSetupInput').classList.add('hidden');
+                }
+                
+                newImgs = ['', '', '', ''];
+                newImgStates = ['view', 'view', 'view', 'view'];
+                renderNewImages();
+
+                fetchJournalDatabase(); 
+            } catch(e) { alert("Błąd połączenia."); }
+
+            btn.innerText = "Add Trade"; btn.classList.remove("opacity-50", "cursor-not-allowed");
+        }
+
+        function openEditModal(tradeId) {
+            const trades = journalData[activeJournalDate] || [];
+            const tradeToEdit = trades.find(t => t.id == tradeId);
+            if(!tradeToEdit) return;
+
+            document.getElementById('editTradeId').value = tradeToEdit.id;
+            document.getElementById('editTradeAsset').value = tradeToEdit.asset;
+            document.getElementById('editTradePnl').value = tradeToEdit.pnl;
+            document.getElementById('editTradeNotes').value = tradeToEdit.notes;
+            
+            if(document.getElementById('editTradeRR')) {
+                document.getElementById('editTradeRR').value = tradeToEdit.rr || 0;
+            }
+
+            if(document.getElementById('editTradeSetup')) {
+                const select = document.getElementById('editTradeSetup');
+                const customInput = document.getElementById('editCustomSetupInput');
+                
+                let exists = Array.from(select.options).some(opt => opt.value === tradeToEdit.setup);
+                
+                if(exists) {
+                    select.value = tradeToEdit.setup;
+                    customInput.classList.add('hidden');
+                } else if(tradeToEdit.setup && tradeToEdit.setup !== "None") {
+                    select.value = "OTHER";
+                    customInput.value = tradeToEdit.setup;
+                    customInput.classList.remove('hidden');
+                } else {
+                    select.value = "None";
+                    customInput.classList.add('hidden');
+                }
+            }
+
+            editImgs = ['', '', '', ''];
+            editImgStates = ['view', 'view', 'view', 'view'];
+            
+            let firstImage = tradeToEdit.img1 || tradeToEdit.image;
+            if(firstImage && String(firstImage).includes('|')) {
+                const parts = String(firstImage).split('|');
+                for(let i=0; i<4; i++) editImgs[i] = parts[i] || '';
+            } else {
+                editImgs[0] = firstImage || '';
+                editImgs[1] = tradeToEdit.img2 || '';
+                editImgs[2] = tradeToEdit.img3 || '';
+                editImgs[3] = tradeToEdit.img4 || '';
+            }
+
+            renderEditImages();
+            const modal = document.getElementById('editModal');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeEditModal(event) {
+            if (event && event.target.id !== 'editModal') return;
+            const modal = document.getElementById('editModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => { modal.classList.remove('flex'); modal.classList.add('hidden'); }, 200);
+        }
+
+        async function submitEditTrade() {
+            const tradeId = document.getElementById('editTradeId').value;
+            const asset = document.getElementById('editTradeAsset').value;
+            const pnl = document.getElementById('editTradePnl').value;
+            const notes = document.getElementById('editTradeNotes').value;
+            
+            let setup = document.getElementById('editTradeSetup') ? document.getElementById('editTradeSetup').value : "None";
+            if(setup === "OTHER") {
+                setup = document.getElementById('editCustomSetupInput').value.trim() || "None";
+            }
+            
+            let rr = document.getElementById('editTradeRR') ? parseFloat(document.getElementById('editTradeRR').value) : 0;
+            if(isNaN(rr)) rr = 0;
+            
+            if (!asset || !pnl) { alert("Symbol and P&L are required!"); return; }
+
+            const updatedTrade = {
+                action: "update", id: tradeId, date: activeJournalDate, asset: asset.toUpperCase(),
+                pnl: parseFloat(pnl), notes: notes, img1: editImgs[0], img2: editImgs[1], img3: editImgs[2], img4: editImgs[3], setup: setup, rr: rr
+            };
+
+            const btn = document.getElementById('updateBtn');
+            btn.innerText = "UPDATING..."; btn.classList.add("opacity-50", "cursor-not-allowed");
+
+            try {
+                await fetch(webAppUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(updatedTrade) });
+                const trades = journalData[activeJournalDate];
+                const index = trades.findIndex(t => t.id == tradeId);
+                if(index !== -1) trades[index] = updatedTrade;
+                closeEditModal(); 
+                fetchJournalDatabase(); 
+            } catch(e) { alert("Błąd połączenia."); }
+
+            btn.innerText = "Update Trade"; btn.classList.remove("opacity-50", "cursor-not-allowed");
+        }
+
+        async function deleteTradeDirect(tradeId) {
+            if (!tradeId) return;
+
+            if (!confirm("Czy na pewno chcesz trwale usunąć ten wpis? Operacja ta usunie dane z arkusza kalkulacyjnego.")) return;
+
+            const deletePayload = { action: "delete", id: tradeId };
+
+            const statusTag = document.getElementById('statusTag');
+            const originalStatusText = statusTag.innerText;
+            const originalStatusClass = statusTag.className;
+            statusTag.innerText = "USUWANIE WPISU...";
+            statusTag.className = "px-4 py-1.5 rounded border border-red-500 bg-red-900/20 text-red-500 font-bold animate-pulse";
+
+            try {
+                await fetch(webAppUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(deletePayload) });
+
+                if (journalData[activeJournalDate]) {
+                    journalData[activeJournalDate] = journalData[activeJournalDate].filter(t => t.id != tradeId);
+                }
+                
+                fetchJournalDatabase(); 
+
+                setTimeout(() => {
+                    statusTag.innerText = originalStatusText;
+                    statusTag.className = originalStatusClass;
+                }, 1000);
+
+            } catch(e) { 
+                alert("Błąd połączenia podczas usuwania."); 
+                statusTag.innerText = "BŁĄD API";
+                setTimeout(() => {
+                    statusTag.innerText = originalStatusText;
+                    statusTag.className = originalStatusClass;
+                }, 2000);
+            }
+        }
+
+        function swapImage(galleryId, newUrl) {
+            const mainImg = document.getElementById(galleryId + '-main');
+            const mainContainer = document.getElementById(galleryId + '-link');
+            if (mainImg && mainContainer) { 
+                mainImg.src = newUrl; 
+                mainContainer.setAttribute('onclick', `openImageModal('${newUrl}')`);
+            }
+        }
+
+        function renderTradeList() {
+            const listContainer = document.getElementById('tradesList');
+            if (!journalDataLoaded) { listContainer.innerHTML = `<div class="text-center text-emerald-500 font-bold text-sm mt-10 uppercase tracking-widest animate-pulse">Trwa pobieranie z chmury...</div>`; return; }
+            
+            const trades = journalData[activeJournalDate] || [];
+            if (trades.length === 0) { listContainer.innerHTML = `<div class="text-center text-gray-600 text-sm mt-10 italic">No notes logged for this day yet.</div>`; return; }
+
+            listContainer.innerHTML = '';
+            trades.forEach(trade => {
+                const pnlNum = parseFloat(trade.pnl);
+                const colorClass = pnlNum >= 0 ? 'text-emerald-400' : 'text-red-500';
+                
+                let imagesHtml = '';
+                let urls = [];
+                let firstImage = trade.img1 || trade.image;
+                
+                if (firstImage && String(firstImage).includes('|')) {
+                    urls = String(firstImage).split('|').filter(url => url.trim() !== "");
+                } else {
+                    urls = [firstImage, trade.img2, trade.img3, trade.img4].filter(url => url && String(url).trim() !== "");
+                }
+
+                if (urls.length > 0) {
+                    const galleryId = `gallery-${trade.id}`;
+                    imagesHtml = `
+                        <div class="mt-3">
+                            <div id="${galleryId}-link" class="cursor-pointer" onclick="openImageModal('${urls[0]}')">
+                                <img id="${galleryId}-main" src="${urls[0]}" onerror="this.onerror=null; this.src='${fallbackImg}';" class="w-full h-64 object-cover rounded border border-gray-800 hover:opacity-80 transition-opacity">
+                            </div>
+                            ${urls.length > 1 ? `
+                            <div class="flex gap-2 mt-2 overflow-x-auto scrollbar-hide pb-1">
+                                ${urls.map(url => `<button type="button" onclick="swapImage('${galleryId}', '${url}')" class="w-24 h-16 flex-shrink-0 rounded border border-gray-800 hover:border-emerald-500 overflow-hidden transition-colors focus:outline-none"><img src="${url}" onerror="this.onerror=null; this.src='${fallbackImg}';" class="w-full h-full object-cover"></button>`).join('')}
+                            </div>` : ''}
+                        </div>`;
+                }
+
+                const setupPill = (trade.setup && trade.setup !== "None") 
+                    ? `<span class="px-2 py-0.5 bg-indigo-900/30 text-indigo-300 rounded text-[10px] uppercase font-bold ml-2">${trade.setup}</span>` 
+                    : '';
+                
+                const rrInfo = (trade.rr && trade.rr !== 0)
+                    ? `<span class="text-xs font-mono text-gray-500 ml-3">R:R ${trade.rr}</span>`
+                    : '';
+
+                listContainer.innerHTML += `
+                    <div class="p-4 border-b border-gray-800 relative group transition-colors hover:bg-white/5 rounded-xl">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="flex items-center gap-3">
+                                <div>
+                                    <span class="font-black text-white px-2 py-0.5 bg-gray-800 rounded text-xs">${trade.asset}</span>
+                                    ${setupPill}
+                                </div>
+                                <button onclick="openEditModal(${trade.id})" class="text-[10px] text-yellow-600 hover:text-yellow-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity ml-2">Edit</button>
+                                <button onclick="deleteTradeDirect(${trade.id})" class="text-[10px] text-red-600 hover:text-red-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Delete</button>
+                                
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold ${colorClass}">${pnlNum > 0 ? '+' : ''}$${pnlNum.toFixed(2)}</span>
+                                ${rrInfo}
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400 italic mb-2 whitespace-pre-wrap">${trade.notes || 'No notes provided.'}</p>
+                        ${imagesHtml}
+                    </div>`;
+            });
+        }
+        
+        fetchData();
+    </script>
+</body>
+</html>
