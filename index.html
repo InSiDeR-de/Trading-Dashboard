@@ -25,6 +25,10 @@
             <h1 class="text-xl font-bold text-gray-400 tracking-widest uppercase">Live Equity Monitor</h1>
             
             <div class="flex items-center gap-6">
+                <button onclick="openAddAccountModal()" class="px-4 py-2 bg-emerald-900/20 border border-emerald-900/50 text-emerald-400 font-bold text-xs uppercase tracking-widest rounded hover:bg-emerald-900/40 transition-colors">
+                    Add Account
+                </button>
+
                 <button onclick="openStatsModal()" class="px-4 py-2 bg-indigo-900/20 border border-indigo-900/50 text-indigo-400 font-bold text-xs uppercase tracking-widest rounded hover:bg-indigo-900/40 transition-colors">
                     Setup Stats
                 </button>
@@ -33,9 +37,7 @@
                     <span class="text-sm font-semibold text-gray-500">Account</span>
                     <div class="relative">
                         <select id="accountSelect" onchange="switchAccount()" class="appearance-none bg-[#141416] border border-gray-800 text-white text-sm font-bold py-2 pl-4 pr-10 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer hover:bg-gray-900 transition-colors">
-                            <option value="acc1">LFE0506411500002</option>
-                            <option value="acc2">LFE0506411500003</option>
-                        </select>
+                            </select>
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
@@ -238,25 +240,62 @@
         </div>
     </div>
 
+    <div id="addAccountModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-50 p-4 transition-opacity duration-200 opacity-0" onclick="closeAddAccountModal(event)">
+        <div class="bg-[#141416] border border-gray-800 rounded-xl w-[500px] max-w-[90vw] overflow-y-auto shadow-2xl p-6" onclick="event.stopPropagation()">
+            
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-5">
+                <h3 class="text-xl font-bold text-emerald-500 uppercase tracking-widest">Add New Account</h3>
+                <button onclick="closeAddAccountModal()" class="text-gray-400 hover:text-white transition-colors p-1 text-2xl font-bold">&times;</button>
+            </div>
+            
+            <div class="flex flex-col gap-4 mb-5">
+                <div>
+                    <label class="text-[10px] text-gray-500 font-bold uppercase">Account Name (e.g. Eval 3)</label>
+                    <input type="text" id="newAccName" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none mt-1">
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-500 font-bold uppercase">Google Sheets CSV Link</label>
+                    <input type="text" id="newAccCsv" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none mt-1" placeholder="https://docs.google.com/.../pub?output=csv">
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-500 font-bold uppercase">Google Apps Script API Link</label>
+                    <input type="text" id="newAccApi" class="w-full bg-[#0a0a0b] border border-gray-800 rounded p-2 text-white text-sm focus:border-emerald-500 outline-none mt-1" placeholder="https://script.google.com/macros/s/.../exec">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-4">
+                <button onclick="closeAddAccountModal()" class="bg-[#0a0a0b] hover:bg-gray-900 border border-gray-800 text-gray-400 font-bold uppercase tracking-widest text-[10px] px-5 py-2 rounded-md transition-colors">Cancel</button>
+                <button onclick="addNewAccount()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase tracking-widest text-[10px] px-6 py-2 rounded-md transition-colors">Add Account</button>
+            </div>
+        </div>
+    </div>
+
     <div id="imageViewerModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[60] p-4 transition-opacity duration-200 opacity-0" onclick="closeImageModal()">
         <button onclick="closeImageModal()" class="absolute top-4 right-6 text-gray-400 hover:text-white transition-colors p-2 text-4xl font-bold z-10">&times;</button>
         <img id="imageViewerSrc" src="" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl" onclick="event.stopPropagation()">
     </div>
     
     <script>
-        // =========================================================================
-        // KONFIGURACJA KONT (Na stałe wpisane zgodnie z prośbą)
-        // =========================================================================
-        const accountsConfig = {
+        // Baza wbudowanych kont
+        let accountsConfig = {
             "acc1": {
+                name: "LFE0506411500002",
                 csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRLxXdDd318ebPHocMBKad_i98usJ69363UmSKmbPnYEvRtu35VlFpOcaIR-2L1Rj7t4KvCDrVDUw6V/pub?output=csv',
                 api: 'https://script.google.com/macros/s/AKfycbyG2ZlvWRmbNp4syRi4YKL0efVpbJRFtO0MDtY5NQqaV9hJ0JssTtUw6GAr3_jqNVqw/exec'
             },
             "acc2": {
+                name: "LFE0506411500003",
                 csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCXM5eV5znhz5h8D1QqvV-DgXkg6bYyb6Nt_50ba_ecMbPKhq08eYV6U-9NnGkO0eFsXxIzlGY_B2W/pub?output=csv',
                 api: 'https://script.google.com/macros/s/AKfycbyG7hZcFdlEys0-ra6n96bVO_5fZRZGWVzr0waWKoKggfkszfximVOGIwR1LmehGVJx/exec'
             }
         };
+
+        // Zaciąganie kont dodanych przez użytkownika z localStorage
+        const storedCustomAccounts = localStorage.getItem('customAccountsConfig');
+        if(storedCustomAccounts) {
+            const parsedCustom = JSON.parse(storedCustomAccounts);
+            accountsConfig = { ...accountsConfig, ...parsedCustom };
+        }
 
         let savedAccount = localStorage.getItem('selectedAccount');
         let currentAccountId = (savedAccount && accountsConfig[savedAccount]) ? savedAccount : 'acc1';
@@ -265,8 +304,20 @@
         let webAppUrl = accountsConfig[currentAccountId].api;
 
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('accountSelect').value = currentAccountId;
+            renderAccountDropdown();
         });
+
+        function renderAccountDropdown() {
+            const select = document.getElementById('accountSelect');
+            select.innerHTML = '';
+            for (const [key, data] of Object.entries(accountsConfig)) {
+                let option = document.createElement('option');
+                option.value = key;
+                option.text = data.name;
+                select.appendChild(option);
+            }
+            select.value = currentAccountId;
+        }
 
         const fallbackImg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Crect width='100%25' height='100%25' fill='%230a0a0b'/%3E%3Ctext x='50%25' y='50%25' fill='%233f3f46' font-family='sans-serif' font-size='14' font-weight='bold' text-anchor='middle' dominant-baseline='middle'%3EBLAD ZDJECIA%3C/text%3E%3C/svg%3E";
 
@@ -306,6 +357,55 @@
             }
 
             fetchData();
+        }
+
+        // --- OBSŁUGA DODAWANIA KONTA ---
+        function openAddAccountModal() {
+            document.getElementById('newAccName').value = '';
+            document.getElementById('newAccCsv').value = '';
+            document.getElementById('newAccApi').value = '';
+
+            const modal = document.getElementById('addAccountModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeAddAccountModal(event) {
+            if (event && event.target.id !== 'addAccountModal') return;
+            const modal = document.getElementById('addAccountModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => { modal.classList.remove('flex'); modal.classList.add('hidden'); }, 200);
+        }
+
+        function addNewAccount() {
+            const name = document.getElementById('newAccName').value.trim();
+            const csv = document.getElementById('newAccCsv').value.trim();
+            const api = document.getElementById('newAccApi').value.trim();
+
+            if(!name || !csv || !api) {
+                alert("Wypełnij wszystkie pola!");
+                return;
+            }
+
+            const newId = 'custom_' + Date.now();
+            const newAccData = { name: name, csv: csv, api: api };
+            
+            // Zapis do obiektu konfiguracyjnego w pamięci podręcznej
+            let customAccounts = localStorage.getItem('customAccountsConfig');
+            customAccounts = customAccounts ? JSON.parse(customAccounts) : {};
+            customAccounts[newId] = newAccData;
+            localStorage.setItem('customAccountsConfig', JSON.stringify(customAccounts));
+
+            // Zapis do aktualnie działającej zmiennej i zmuszenie widoku do odświeżenia
+            accountsConfig[newId] = newAccData;
+            renderAccountDropdown();
+            
+            // Przełącz na to nowo dodane konto automatycznie
+            document.getElementById('accountSelect').value = newId;
+            switchAccount();
+            
+            closeAddAccountModal();
         }
 
         async function fetchData() {
@@ -654,7 +754,6 @@
             }
         }
 
-        // --- PRAWIDŁOWA FUNKCJA DO POKAZYWANIA INPUTA "OTHER" ---
         function toggleCustomSetupInput(selectId, inputId) {
             const select = document.getElementById(selectId);
             const customInput = document.getElementById(inputId);
@@ -667,7 +766,7 @@
         }
 
         function populateSetupDropdowns() {
-            let uniqueSetups = new Set(['None', 'MSS+FVG', 'LQ+MSS+FVG', 'BOS+IFVG','IFVG', 'FVG', 'Gambling', 'Undisciplined']);
+            let uniqueSetups = new Set(['None / Other', 'MSS+FVG', 'LQ+MSS+FVG', 'BPR', 'Silver Bullet']);
             
             Object.values(journalData).forEach(dayTrades => {
                 dayTrades.forEach(t => {
@@ -1167,6 +1266,7 @@
             });
         }
         
+        // Inicjacja przy starcie strony
         fetchData();
     </script>
 </body>
