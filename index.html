@@ -36,6 +36,7 @@
                             <option value="acc1">LFE0506411500002</option>
                             <option value="acc2">LFE0506411500003</option>
                             <option value="acc3">LFE0506411500004</option>
+                            <option value="acc4">Konto Demo</option>
                         </select>
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -245,6 +246,9 @@
     </div>
     
     <script>
+        // =========================================================================
+        // KONFIGURACJA KONT
+        // =========================================================================
         const accountsConfig = {
             "acc1": {
                 name: "LFE0506411500002",
@@ -257,9 +261,14 @@
                 api: 'https://script.google.com/macros/s/AKfycbyG7hZcFdlEys0-ra6n96bVO_5fZRZGWVzr0waWKoKggfkszfximVOGIwR1LmehGVJx/exec'
             },
             "acc3": {
-                name: "LFE0506411500004", // Zmień tę nazwę, jeśli konto ma inną w Panelu
+                name: "LFE0506411500004", 
                 csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSMqxJo1d1UA0u-WZR9yDhnyTcmQRiZPPS1ngxb_CBpqjLopbizUoJhk8eT9uMj6K03dw4u9fp-T9Xx/pub?output=csv',
                 api: 'https://script.google.com/macros/s/AKfycbyn2tksiWFzi4Q_lAbP7MqC6Yy2z0ITjgnyBVr8mhN5tI04N45Sft7S67p3yGDdBwY5CA/exec'
+            },
+            "acc4": {
+                name: "Konto Demo", 
+                csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9q3eFLK-imNt2Uv-j7lmSO4dHHPPrX4ZPzXdghRJ9qrAU1Y5iYPpqrIrWfi9unZpegdZSHMcEoPqo/pub?output=csv',
+                api: 'https://script.google.com/macros/s/AKfycbzhfqlhZ8FhG3GO0YHKeURfllA6TeU0aCKmeglr35mp8LTzTPgf0EB1f_28lXCtUlWK/exec'
             }
         };
 
