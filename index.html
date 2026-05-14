@@ -33,10 +33,10 @@
                     <span class="text-sm font-semibold text-gray-500">Account</span>
                     <div class="relative">
                         <select id="accountSelect" onchange="switchAccount()" class="appearance-none bg-[#141416] border border-gray-800 text-white text-sm font-bold py-2 pl-4 pr-10 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer hover:bg-gray-900 transition-colors">
+                            <option value="acc4">DEMO</option>
                             <option value="acc1">LFE0506411500002</option>
                             <option value="acc2">LFE0506411500003</option>
                             <option value="acc3">LFE0506411500004</option>
-                            <option value="acc4">DEMO</option>
                             <option value="acc5">D#2177764</option>
                         </select>
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
@@ -251,6 +251,12 @@
         // KONFIGURACJA KONT
         // =========================================================================
         const accountsConfig = {
+        
+            "acc4": {
+                name: "DEMO", 
+                csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9q3eFLK-imNt2Uv-j7lmSO4dHHPPrX4ZPzXdghRJ9qrAU1Y5iYPpqrIrWfi9unZpegdZSHMcEoPqo/pub?output=csv',
+                api: 'https://script.google.com/macros/s/AKfycbzhfqlhZ8FhG3GO0YHKeURfllA6TeU0aCKmeglr35mp8LTzTPgf0EB1f_28lXCtUlWK/exec'
+            },
             "acc1": {
                 name: "LFE0506411500002",
                 csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRLxXdDd318ebPHocMBKad_i98usJ69363UmSKmbPnYEvRtu35VlFpOcaIR-2L1Rj7t4KvCDrVDUw6V/pub?output=csv',
@@ -265,11 +271,6 @@
                 name: "LFE0506411500004", 
                 csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSMqxJo1d1UA0u-WZR9yDhnyTcmQRiZPPS1ngxb_CBpqjLopbizUoJhk8eT9uMj6K03dw4u9fp-T9Xx/pub?output=csv',
                 api: 'https://script.google.com/macros/s/AKfycbyn2tksiWFzi4Q_lAbP7MqC6Yy2z0ITjgnyBVr8mhN5tI04N45Sft7S67p3yGDdBwY5CA/exec'
-            },
-            "acc4": {
-                name: "DEMO", 
-                csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9q3eFLK-imNt2Uv-j7lmSO4dHHPPrX4ZPzXdghRJ9qrAU1Y5iYPpqrIrWfi9unZpegdZSHMcEoPqo/pub?output=csv',
-                api: 'https://script.google.com/macros/s/AKfycbzhfqlhZ8FhG3GO0YHKeURfllA6TeU0aCKmeglr35mp8LTzTPgf0EB1f_28lXCtUlWK/exec'
             },
             "acc5": {
                 name: "D#2177764", 
